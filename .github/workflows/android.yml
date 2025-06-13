@@ -1,0 +1,61 @@
+name: Android Build CI
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Node.js 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Accept Android Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
+      - name: Install NPM dependencies
+        run: npm install
+        working-directory: telon-gateway-app
+
+      - name: Bundle React Native
+        run: |
+          mkdir -p android/app/build/intermediates/assets/release/
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/build/intermediates/assets/release/index.android.bundle \
+            --assets-dest android/app/build/intermediates/res/merged/release
+        working-directory: telon-gateway-app
+
+      - name: Build Android APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+        working-directory: telon-gateway-app
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: telon-app-debug
+          path: telon-gateway-app/android/app/build/outputs/apk/debug/app-debug.apk
