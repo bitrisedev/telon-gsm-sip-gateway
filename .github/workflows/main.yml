@@ -1,4 +1,4 @@
-name: Build and Release Android App
+name: Android Build CI
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -15,6 +16,7 @@ jobs:
   build_android:
     runs-on: ubuntu-latest
     needs: build
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -25,12 +27,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Node.js 16 (for React Native compatibility)
+      - name: Setup Node.js 16
         uses: actions/setup-node@v2
         with:
-          node-version: 16
+          node-version: '16'
 
-      - name: Cache Node.js dependencies
+      - name: Cache NPM dependencies
         uses: actions/cache@v3
         with:
           path: ~/.npm
@@ -53,11 +55,6 @@ jobs:
           echo "ANDROID_NDK_HOME=$HOME/android-ndk/android-ndk-r17b" >> $GITHUB_ENV
           echo "ndk.dir=$HOME/android-ndk/android-ndk-r17b" > telon-gateway-app/android/local.properties
 
-      - name: Verify NDK installation
-        run: |
-          echo "NDK_HOME=$NDK_HOME"
-          ls -la $NDK_HOME
-
       - name: Install Dependencies
         run: npm install
         working-directory: telon-gateway-app
@@ -65,7 +62,8 @@ jobs:
       - name: Bundle React Native for Android
         run: |
           mkdir -p android/app/build/intermediates/assets/release/
-          NODE_OPTIONS=--openssl-legacy-provider npx react-native bundle \
+          source ~/.nvm/nvm.sh && nvm use 16
+          npx react-native bundle \
             --platform android \
             --dev false \
             --entry-file index.js \
@@ -73,10 +71,10 @@ jobs:
             --assets-dest android/app/build/intermediates/res/merged/release
         working-directory: telon-gateway-app
 
-      - name: Build Android Release AAB
+      - name: Build Android Release
         run: |
           cd android
-          chmod +x gradlew 
+          chmod +x gradlew
           ./gradlew clean
           ./gradlew bundleRelease -Pkeystore.password=${{ secrets.KEYSTORE_PASSWORD }}
         working-directory: telon-gateway-app
@@ -84,6 +82,7 @@ jobs:
   download_bundle:
     runs-on: ubuntu-latest
     needs: build_android
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -94,7 +93,7 @@ jobs:
           cp android/app/build/outputs/bundle/release/app-release.aab dist/
         working-directory: telon-gateway-app
 
-      - name: Archive Bundle
+      - name: Archive Android Bundle
         uses: actions/upload-artifact@v2
         with:
           name: android-bundle
