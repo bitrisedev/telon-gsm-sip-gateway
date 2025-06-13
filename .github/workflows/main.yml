@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: 18
+          node-version: 16
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
@@ -67,7 +67,7 @@ jobs:
       - name: Build Android App Bundle (React Native)
         run: |
           mkdir -p android/app/build/intermediates/assets/release/
-          npx react-native bundle \
+          NODE_OPTIONS=--openssl-legacy-provider npx react-native bundle \
             --platform android \
             --dev false \
             --entry-file index.js \
@@ -78,7 +78,7 @@ jobs:
       - name: Build Android Release
         run: |
           cd android
-          chmod +x gradlew
+          chmod +x gradlew 
           ./gradlew clean
           ./gradlew bundleRelease -Pkeystore.password=${{ secrets.KEYSTORE_PASSWORD }}
         working-directory: telon-gateway-app
